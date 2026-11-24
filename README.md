@@ -1,66 +1,34 @@
-# ![Hysteria 2](logo.svg)
+# Hysteria — Mistgate fork
 
-[![License][1]][2] [![Release][3]][4] [![Telegram][5]][6] [![Discussions][7]][8]
+This is [HyNetworks/hysteria](https://github.com/HyNetworks/hysteria) (formerly apernet/hysteria) at `core/v2.14.0` plus **a few small patches to the
+`core` module**, on the branch `mistgate`. Everything else is upstream, unchanged; for what Hysteria is and how to use
+it, read the upstream repository and <https://v2.hysteria.network/>. License: MIT, as upstream.
 
-[1]: https://img.shields.io/badge/license-MIT-blue
-[2]: LICENSE.md
-[3]: https://img.shields.io/github/v/release/apernet/hysteria?style=flat-square
-[4]: https://github.com/apernet/hysteria/releases
-[5]: https://img.shields.io/badge/chat-Telegram-blue?style=flat-square
-[6]: https://t.me/hysteria_github
-[7]: https://img.shields.io/github/discussions/apernet/hysteria?style=flat-square
-[8]: https://github.com/apernet/hysteria/discussions
+## What is changed (all in `core/`)
 
-<h2 style="text-align: center;">Hysteria is a powerful, lightning-fast, and censorship-resistant proxy.</h2>
+- **Connection events** (`server/config.go`, `server/server.go`): `ConnEventLogger`, an optional extension of
+  `EventLogger` with `Accepted(conn)`, `ConnConnect(conn, id, tx)` and `ConnDisconnect(conn, id, err)`, so a server
+  application gets the QUIC connection itself and can read its statistics.
+- **Lost packets** (`internal/congestion/utils.go`, `server/`, `client/client.go`): `server.LostPackets(conn)` and
+  the same count in the client's `ConnectionStats()`. quic-go counts lost packets only in its own congestion
+  controller; BBR and Brutal are wrapped in a counter.
+- **Why a handshake failed** (`server/config.go`, `server/server.go`): `QUICConfig.ConnContext`, passed to
+  `quic.Transport.ConnContext`. Its context ends with the close error as the cause, also for a handshake that never
+  completed (a timeout, a TLS alert either way). One callback per connection, nothing per packet.
+- **Bytes the request hook puts back** (`server/server.go`): `handleTCPRequest` counts them in `LogTraffic`, so they
+  are not missing from the user's counted upload.
 
-### [Get Started](https://v2.hysteria.network/)
+Nothing changes for an application that does not use the new hooks. The patches are meant to go upstream as pull
+requests. Details and how to move them to a newer version: [core/MISTGATE.md](core/MISTGATE.md).
 
-### [中文文档](https://v2.hysteria.network/zh/)
+## See the patches
 
-### [Hysteria 1.x (legacy)](https://v1.hysteria.network/)
+```
+git diff core/v2.14.0 mistgate -- core
+```
 
----
+## Who uses it
 
-<div class="feature-grid">
-  <div>
-    <h3>🛠️ Jack of all trades</h3>
-    <p>Wide range of modes including SOCKS5, HTTP Proxy, TCP/UDP Forwarding, Linux TProxy, TUN - with more features being added constantly.</p>
-  </div>
-
-  <div>
-    <h3>⚡ Blazing fast</h3>
-    <p>Powered by a customized QUIC protocol, Hysteria is designed to deliver unparalleled performance over unreliable and lossy networks.</p>
-  </div>
-
-  <div>
-    <h3>✊ Censorship resistant</h3>
-    <p>The protocol masquerades as standard HTTP/3 traffic, making it very difficult for censors to detect and block without widespread collateral damage.</p>
-  </div>
-  
-  <div>
-    <h3>💻 Cross-platform</h3>
-    <p>We have builds for every major platform and architecture. Deploy anywhere & use everywhere. Not to mention the long list of 3rd party apps.</p>
-  </div>
-
-  <div>
-    <h3>🔗 Easy integration</h3>
-    <p>With built-in support for custom authentication, traffic statistics & access control, Hysteria is easy to integrate into your infrastructure.</p>
-  </div>
-  
-  <div>
-    <h3>🤗 Chill and supportive</h3>
-    <p>We have well-documented specifications and code for developers to contribute and/or build their own apps. And a helpful community, too.</p>
-  </div>
-</div>
-
----
-
-**If you find Hysteria useful, consider giving it a ⭐️!**
-
-<a href="https://www.star-history.com/?repos=apernet%2Fhysteria&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=apernet/hysteria&type=date&theme=dark&legend=top-left&sealed_token=K7X7A4ntaPiRwqCXrW5ZLxZa8rNoQzDOr49Gv4mvXHJDHSerFPUWDcmyyBK_qe3bkV7UAoR_QSn-tFuLB48e3Bvb-eZrUFNk7M8uanHqCOXK2sR0WyHVkw" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=apernet/hysteria&type=date&legend=top-left&sealed_token=K7X7A4ntaPiRwqCXrW5ZLxZa8rNoQzDOr49Gv4mvXHJDHSerFPUWDcmyyBK_qe3bkV7UAoR_QSn-tFuLB48e3Bvb-eZrUFNk7M8uanHqCOXK2sR0WyHVkw" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=apernet/hysteria&type=date&legend=top-left&sealed_token=K7X7A4ntaPiRwqCXrW5ZLxZa8rNoQzDOr49Gv4mvXHJDHSerFPUWDcmyyBK_qe3bkV7UAoR_QSn-tFuLB48e3Bvb-eZrUFNk7M8uanHqCOXK2sR0WyHVkw" />
- </picture>
-</a>
+[Mistgate](https://github.com/Mistgate/mistgate), a VPN panel, builds its nodes with this `core` (it keeps the same
+files in `third_party/hysteria-core`). You can use it without Mistgate through a `replace` of
+`github.com/apernet/hysteria/core/v2` in your `go.mod`.
